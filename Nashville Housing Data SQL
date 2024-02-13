@@ -1,0 +1,167 @@
+
+
+
+Select *
+FROM [Portfolio Project 2].[dbo].[Nashville ]
+
+
+-- Standardize Date Format
+Select SaleDate, CONVERT(Date,SaleDate)
+From [Portfolio Project 2].[dbo].[Nashville ] 
+
+Update [Portfolio Project 2].[dbo].[Nashville ] 
+SET SaleDate = CONVERT(Date,SaleDate)
+
+-- Populate Property Address data
+
+Select PropertyAddress
+FROM [Portfolio Project 2].[dbo].[Nashville ]
+where  PropertyAddress is null 
+
+
+Select a.ParcelID, a.PropertyAddress, b.ParcelID, b.PropertyAddress, ISNULL(a.PropertyAddress,b.PropertyAddress)
+FROM [Portfolio Project 2].[dbo].[Nashville ] as a
+join [Portfolio Project 2].[dbo].[Nashville ]  as b
+ on a.ParcelID = b.ParcelID
+ and a.UniqueID <> b.UniqueID
+ where a.ParcelID is null
+
+Update a
+SET PropertyAddress = ISNULL(a.PropertyAddress,b.PropertyAddress)
+FROM [Portfolio Project 2].[dbo].[Nashville ] as a
+join [Portfolio Project 2].[dbo].[Nashville ]  as b
+ on a.ParcelID = b.ParcelID
+ and a.UniqueID <> b.UniqueID
+ where a.ParcelID is null
+
+ -- Breaking out Address into Individual Columns (Address, City, State)
+
+ 
+SELECT 
+    SUBSTRING(PropertyAddress, 1, CHARINDEX(',', PropertyAddress) - 1) AS Address,
+    SUBSTRING(PropertyAddress, CHARINDEX(',', PropertyAddress) + 1, LEN(PropertyAddress)) AS AddressAfterComma
+FROM [Portfolio Project 2].[dbo].[Nashville]
+
+ALTER TABLE [Portfolio Project 2].[dbo].[Nashville]
+Add PropertySplitAddress Nvarchar(255);
+
+Update [Portfolio Project 2].[dbo].[Nashville]
+SET PropertySplitAddress = SUBSTRING(PropertyAddress, 1, CHARINDEX(',', PropertyAddress) -1 )
+
+
+ALTER TABLE [Portfolio Project 2].[dbo].[Nashville]
+Add PropertySplitCity Nvarchar(255);
+
+Update [Portfolio Project 2].[dbo].[Nashville]
+SET PropertySplitCity = SUBSTRING(PropertyAddress, CHARINDEX(',', PropertyAddress) + 1 , LEN(PropertyAddress))
+
+-----owneraadress with persename
+select 
+PARSENAME(REPLACE(OwnerAddress, ',', '.') , 3) as FiSt,
+PARSENAME( Replace(OwnerAddress, ',','.'),2),
+PARSENAME( Replace(OwnerAddress, ',','.'),1)
+
+
+from [Nashville ]
+
+
+ALTER TABLE [Nashville ]
+Add OwnerSplitAddress Nvarchar(255);
+
+Update [Nashville ]
+SET OwnerSplitAddress = PARSENAME(REPLACE(OwnerAddress, ',', '.') , 3)
+
+
+ALTER TABLE [Nashville ]
+Add OwnerSplitCity Nvarchar(255);
+
+Update [Nashville ]
+SET OwnerSplitCity = PARSENAME(REPLACE(OwnerAddress, ',', '.') , 2)
+
+
+ALTER TABLE [Nashville ]
+Add OwnerSplitState Nvarchar(255);
+
+Update [Nashville ]
+SET OwnerSplitState = PARSENAME(REPLACE(OwnerAddress, ',', '.') , 1)
+
+Select *
+From  [Nashville ]
+
+-- Change Y and N to Yes and No in "Sold as Vacant" field
+
+Select Distinct(SoldAsVacant), Count(SoldAsVacant)
+From [Nashville ]
+Group by SoldAsVacant
+order by 2
+
+
+SELECT 
+    CASE 
+        WHEN SoldAsVacant = 1 THEN 'Yes'
+        WHEN SoldAsVacant = 0 THEN 'No'
+        ELSE 'Unknown' -- Or any other default value
+    END AS CorrectedSoldAsVacant
+FROM [Nashville];
+
+UPDATE [Nashville]
+SET SoldAsVacant = 
+    CASE 
+        WHEN TRY_CAST(SoldAsVacant AS VARCHAR(3)) = 'Yes' THEN 1
+        WHEN TRY_CAST(SoldAsVacant AS VARCHAR(3)) = 'No' THEN 0
+        ELSE SoldAsVacant -- Keep the existing value if it doesn't match 'Yes' or 'No'
+    END;
+
+--duplicate remove
+
+--WITH CTE AS (
+--    SELECT *,
+--           ROW_NUMBER() OVER (PARTITION BY 
+--		   column1, 
+--		   column2, 
+--		   ORDER BY (SELECT NULL)) AS RowNumber
+--    FROM YourTableName
+--)
+--DELETE FROM CTE WHERE RowNumber > 1;
+
+WITH RowNumCTE AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY ParcelID,
+                            PropertyAddress,
+                            SalePrice,
+                            SaleDate,
+                            LegalReference
+               ORDER BY UniqueID
+           ) AS row_num
+    FROM [Nashville]
+)
+-- Selecting the rows to be deleted
+SELECT *
+FROM RowNumCTE
+WHERE row_num > 1
+ORDER BY PropertyAddress;
+
+-- Deleting the duplicate rows from the base table
+DELETE FROM [Nashville]
+WHERE UniqueID IN (
+    SELECT UniqueID
+    FROM RowNumCTE
+    WHERE row_num > 1
+);
+
+
+
+-- Delete Unused Columns
+
+
+
+Select *
+From [Nashville ]
+
+
+ALTER TABLE [Nashville ]
+DROP COLUMN OwnerAddress, TaxDistrict, PropertyAddress, SaleDate
+
+
+
