@@ -1,0 +1,76 @@
+
+
+
+Select * from [owid-covid-data]
+where continent is not null
+order by 3,4
+
+--Total deaths vs Total Cases
+SELECT location, date,total_cases, new_cases,total_deaths,
+    CASE 
+        WHEN TRY_CAST(total_cases AS FLOAT) = 0 THEN NULL
+        ELSE (TRY_CAST(total_deaths AS FLOAT) / TRY_CAST(total_cases AS FLOAT)) * 100
+    END AS Deathpercentage
+FROM [owid-covid-data]
+ORDER BY  location,  date;
+
+-- Total cases vs Population
+SELECT location, date,total_cases, new_cases,population,
+    CASE 
+        WHEN TRY_CAST(total_cases AS FLOAT) = 0 THEN NULL
+        ELSE (TRY_CAST(total_cases AS FLOAT) / TRY_CAST(population AS FLOAT)) * 100
+    END AS Deathpercentage
+FROM [owid-covid-data]
+ORDER BY  location,  date;
+
+
+--Highest Infection Rate
+
+SELECT location, date,total_cases, new_cases,population, MAX(total_cases) as HighestInfectionCount,
+    CASE 
+        WHEN TRY_CAST(total_cases AS FLOAT) = 0 THEN NULL
+        ELSE (TRY_CAST(total_cases AS FLOAT) / TRY_CAST(population AS FLOAT)) * 100
+    END AS Deathpercentage
+FROM [owid-covid-data]
+Group by  location, date,total_cases, new_cases,population
+ORDER BY HighestInfectionCount desc ;
+
+
+--Countries With Highest Death Count
+
+SELECT location,MAX(total_deaths) as TotalDeathCount
+FROM [owid-covid-data]
+where continent is not null
+Group by  location
+ORDER BY TotalDeathCount desc ;
+
+
+--Continent with highest death rate
+
+SELECT continent,MAX(total_deaths) as TotalDeathCount
+FROM [owid-covid-data]
+where continent is not null
+Group by  continent
+ORDER BY TotalDeathCount desc ;
+
+
+---Global Numbers
+SELECT location, date, 
+    SUM(TRY_CAST(total_cases AS FLOAT)) AS total_cases, 
+    SUM(TRY_CAST(new_cases AS FLOAT)) AS new_cases,
+    CASE 
+        WHEN SUM(TRY_CAST(total_cases AS FLOAT)) = 0 THEN NULL
+        ELSE (SUM(TRY_CAST(total_deaths AS FLOAT)) / SUM(TRY_CAST(total_cases AS FLOAT))) * 100
+    END AS Deathpercentage
+FROM  [owid-covid-data]
+GROUP BY  location,  date
+ORDER BY location, date;
+
+--Total population vs total vaccination
+Select population,date,location,total_vaccinations,
+CASE 
+        WHEN SUM(TRY_CAST(total_vaccinations AS FLOAT)) = 0 THEN NULL --sum(try_cast(total_deaths as Float ))
+        ELSE (SUM(TRY_CAST(total_vaccinations AS FLOAT)) / SUM(TRY_CAST(population AS FLOAT))) * 100
+    END AS Deathpercentage
+from [owid-covid-data] as covid
+Group by population,date,location,total_vaccinations
